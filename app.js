@@ -44,14 +44,10 @@ app.get('/api/todos', async(req, res) => {
 });
 
 // this endpoint creates a new todo
-app.post('/api/todos', async (req, res) => {
+app.post('/api/todos', async(req, res) => {
     try {
-        // the user input lives is req.body.task
-
-        console.log('|||||||', req.body);
-        // use req.body.task to build a sql query to add a new todo
+         // use req.body.task to build a sql query to add a new todo
         // we also return the new todo
-
         const query = `
         insert into todos (task, complete)
         values ('${req.body.task}', false)
