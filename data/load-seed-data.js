@@ -1,6 +1,6 @@
-const client = require("../lib/client");
+const client = require('../lib/client');
 // import our seed data:
-const todos = require("./todos.js");
+const todos = require('./todos.js');
 
 run();
 
@@ -13,22 +13,22 @@ async function run() {
                     INSERT INTO users (email, hash)
                     VALUES ($1, $2);
                 `,
-      ["dead@why.com", "whackyforeverbox"]
+      ['dead@why.com', 'whackyforeverbox']
     );
 
     await Promise.all(
       todos.map(todo => {
         return client.query(
           `
-                    INSERT INTO todos (task, complete)
-                    VALUES ($1, $2);
+                    INSERT INTO todos (task, complete, user_id)
+                    VALUES ($1, false, $2);
                 `,
-          [todo.task, todo.complete, todo.user_id]
+          [todo.task, todo.user_id]
         );
       })
     );
 
-    console.log("seed data load complete");
+    console.log('seed data load complete');
   } catch (err) {
     console.log(err);
   } finally {

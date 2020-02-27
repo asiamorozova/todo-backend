@@ -20,50 +20,82 @@ app.use(express.json()); // enable reading incoming json data
 
 app.use(express.urlencoded({ extended: true }));
 
+
+const createAuthRoutes = require('./lib/auth/create-auth-routes');
+
+const authRoutes = createAuthRoutes({
+    selectUser(email) {
+        return client.query(`
+            SELECT id, email, hash 
+            FROM users
+            WHERE email = $1;
+        `,
+        [email]
+        ).then(result => result.rows[0]);
+    },
+    insertUser(user, hash) {
+        return client.query(`
+            INSERT into users (email, hash)
+            VALUES ($1, $2)
+            RETURNING id, email;
+        `,
+        [user.email, hash]
+        ).then(result => result.rows[0]);
+    }
+});
+
+// before ensure auth, but after other middleware:
+app.use('/api/auth', authRoutes);
+
+// for every route, on every request, make sure there is a token
+const ensureAuth = require('./lib/auth/ensure-auth');
+
+app.use('/api', ensureAuth);
+
 // *** TODOS ***
 // this is /GET request that returns whole list of todos
 app.get('/api/todos', async(req, res) => {
-
     try {
-        // make a sql query using pg.Client() to select * from todos
+    // make a sql query using pg.Client() to select * from todos
         const result = await client.query(`
             select * from todos;
         `);
 
-        // respond to the client with that data
+    // respond to the client with that data
         res.json(result.rows);
-    }
-    catch (err) {
-        // handle errors
+    } catch (err) {
+    // handle errors
         console.log(err);
         res.status(500).json({
             error: err.message || err
         });
     }
-
 });
 
 // this endpoint creates a new todo
 app.post('/api/todos', async(req, res) => {
     try {
-         // use req.body.task to build a sql query to add a new todo
-        // we also return the new todo
+    // use req.body.task to build a sql query to add a new todo
+    // we also return the new todo
         const query = `
         insert into todos (task, complete)
         values ('${req.body.task}', false)
         returning *;
     `;
-        const result = await client.query(`
+        const result = await client.query(
+            `
             insert into todos (task, complete)
             values ('${req.body.task}', false)
             returning *;
         `,
-        [/* pass in data */]);
+            [
+        /* pass in data */
+            ]
+        );
 
-        // respond to the client request with the newly created todo
+    // respond to the client request with the newly created todo
         res.json(result.rows[0]);
-    }
-    catch (err) {
+    } catch (err) {
         console.log(err);
         res.status(500).json({
             error: err.message || err
@@ -72,18 +104,22 @@ app.post('/api/todos', async(req, res) => {
 });
 
 // this route has a body with a complete property and an id in the params
-app.put('/api/todos/:id', async (req, res) => {
+app.put('/api/todos/:id', async(req, res) => {
     try {
-        const result = await client.query(`
+        const result = await client.query(
+            `
         update todos
         set complete=${req.body.complete}
         where id = ${req.params.id}
         returning *;
-        `, [/* pass in data */]);
+        `,
+            [
+        /* pass in data */
+            ]
+        );
 
         res.json(result.rows[0]);
-    }
-    catch (err) {
+    } catch (err) {
         console.log(err);
         res.status(500).json({
             error: err.message || err
@@ -91,18 +127,17 @@ app.put('/api/todos/:id', async (req, res) => {
     }
 });
 
-app.delete('/api/todos/:id', async (req, res) => {
-    // get the id that was passed in the route:
+app.delete('/api/todos/:id', async(req, res) => {
+  // get the id that was passed in the route:
 
     try {
         const result = await client.query(`
             delete from todos where id=${req.params.id}
             returning *;
-        `,); // this array passes to the $1 in the query, sanitizing it to prevent little bobby drop tables
+        `); // this array passes to the $1 in the query, sanitizing it to prevent little bobby drop tables
 
         res.json(result.rows[0]);
-    }
-    catch (err) {
+    } catch (err) {
         console.log(err);
         res.status(500).json({
             error: err.message || err
